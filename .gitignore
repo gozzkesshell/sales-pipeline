@@ -1,0 +1,10 @@
+.venv/
+chrome-profile/
+results.csv
+.scrape-state.json
+__pycache__/
+*.pyc
+.DS_Store
+.env
+data/
+

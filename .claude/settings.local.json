@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import requests; import dotenv; print\\(''Dependencies OK''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python -m pip install requests python-dotenv)",
+      "Bash(where python:*)",
+      "Bash(git add *)"
+    ]
+  }
+}
