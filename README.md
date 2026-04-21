@@ -153,22 +153,77 @@ Claude Code will automatically detect the `.claude/commands/` folder and load th
 
 ---
 
-## How to install the skill in Claude Code
+## How to install the skill
 
-> Claude Code is a terminal-based AI coding assistant made by Anthropic — **separate from the Claude.ai chat app**. The slash commands in this project only work inside Claude Code.
+There are two ways to use this pipeline, depending on which Claude product you have:
 
-### Step 1 — Install Claude Code
+| | Claude Desktop (chat app) | Claude Code (terminal) |
+|---|---|---|
+| What it is | AI chat app — no terminal needed | AI coding assistant in your terminal |
+| How you interact | Just chat naturally | Slash commands + chat |
+| Install method | Install `sales-pipeline.skill` | Open project folder, slash commands auto-load |
+| Best for | Non-technical users | Developers / power users |
+
+---
+
+### Option A — Claude Desktop (chat app, no terminal needed)
+
+This uses the `sales-pipeline.skill` file and lets you control the pipeline by chatting naturally — no slash commands or terminal required.
+
+#### Step 1 — Download the skill file
+
+Download [`sales-pipeline.skill`](https://github.com/gozzkesshell/sales-pipeline/raw/master/sales-pipeline.skill) from this repo.
+
+#### Step 2 — Install it in Claude
+
+Open Claude Desktop (or Claude Code), then run:
+
+```
+/install-skill /path/to/sales-pipeline.skill
+```
+
+Replace `/path/to/` with wherever you downloaded the file. For example:
+
+- **Mac:** `/install-skill ~/Downloads/sales-pipeline.skill`
+- **Windows:** `/install-skill C:\Users\YourName\Downloads\sales-pipeline.skill`
+
+The skill is now installed globally — it's available in every Claude chat, not just this project.
+
+#### Step 3 — Also install the project files
+
+The skill still needs the Python scripts and your ICP PDFs on disk. Install them:
+
+- **Mac:** use `install-mac.command` (see [INSTALL-MAC.md](INSTALL-MAC.md)) — this sets everything up automatically.
+- **Windows / manual:** clone the repo and run `pip install -r requirements.txt`.
+
+#### Step 4 — Chat naturally
+
+Open any Claude chat and just talk to it:
+
+> "Scrape leads from this Sales Navigator URL: https://..."  
+> "Score my leads against my ICPs"  
+> "Post-enrich the borderline ones"  
+> "Segment and export for campaigns"  
+> "What's the status of my pipeline?"
+
+Claude will find the project automatically, run the scripts in the background, and report results — no slash commands needed.
+
+---
+
+### Option B — Claude Code (terminal, slash commands)
+
+Claude Code is Anthropic's terminal-based AI assistant. The slash commands in `.claude/commands/` load automatically when you open the project folder.
+
+#### Step 1 — Install Claude Code
 
 Go to [claude.ai/code](https://claude.ai/code) and follow the install instructions for your OS.
 
-After install, verify it works by opening a terminal and typing:
+Verify it works:
 ```bash
 claude --version
 ```
 
-### Step 2 — Open the project
-
-The slash commands become available **automatically** as soon as you open Claude Code from inside the project folder. There is nothing extra to install or register — Claude Code picks up `.claude/commands/` by convention.
+#### Step 2 — Open the project
 
 **Windows:**
 ```bat
@@ -182,9 +237,9 @@ cd ~/Applications/sales-pipeline    # if installed via install-mac.command
 claude
 ```
 
-> **Tip:** On Mac, use the `Launch Sales Pipeline` shortcut on your Desktop (created by `install-mac.command`) — it opens Claude Code in the right folder automatically.
+> **Tip:** On Mac, double-click `Launch Sales Pipeline` on your Desktop — it opens Claude Code in the right folder automatically.
 
-### Step 3 — Confirm the commands loaded
+#### Step 3 — Confirm the commands loaded
 
 Inside Claude Code, type `/` and you should see:
 
@@ -196,16 +251,7 @@ Inside Claude Code, type `/` and you should see:
 /segment           Filter and export per-ICP CSVs
 ```
 
-If the commands don't appear, make sure you launched Claude Code **from inside the project directory** (not from your home folder or elsewhere).
-
-### What is the difference between Claude.ai and Claude Code?
-
-| | Claude.ai (chat app) | Claude Code |
-|---|---|---|
-| What it is | AI chat app in browser or desktop | AI coding assistant in your terminal |
-| How you use it | Type messages | Type messages + slash commands |
-| Custom skills | Not supported | Supported via `.claude/commands/` |
-| This project works here? | ❌ No | ✅ Yes |
+If they don't appear, make sure you launched `claude` from **inside the project directory**.
 
 ---
 
@@ -383,7 +429,12 @@ These files are ready to import directly into **Linked Helper** to launch campai
 │   ├── post_enriched_leads.csv
 │   └── segments/
 │       └── <icp_name>.csv
-├── install-mac.command     ← One-click Mac installer
+├── skill/                  ← Claude Desktop skill source (readable)
+│   ├── SKILL.md            ← Skill instructions
+│   └── references/
+│       └── scoring-guide.md
+├── sales-pipeline.skill    ← Packaged skill (install this in Claude)
+├── install-mac.command     ← One-click Mac installer (Claude Code setup)
 ├── INSTALL-MAC.md          ← Mac install walkthrough
 ├── .env                    ← Your secrets (gitignored)
 ├── .env.example            ← Template
