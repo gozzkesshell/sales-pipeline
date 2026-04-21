@@ -51,6 +51,13 @@ Each step can be run individually or you can run the full pipeline with one comm
 
 ## Installation
 
+### Mac — one-click installer (recommended for non-technical users)
+
+Download the repo as a ZIP, unzip it, then **right-click → Open** on `install-mac.command`.
+Full walkthrough: [INSTALL-MAC.md](INSTALL-MAC.md).
+
+### Manual install
+
 ### 1. Clone the repository
 
 **Windows (Command Prompt or PowerShell):**
