@@ -58,23 +58,23 @@ Full walkthrough: [INSTALL-MAC.md](INSTALL-MAC.md).
 
 ### Manual install
 
-### 1. Clone the repository
+#### 1. Clone the repository
 
 **Windows (Command Prompt or PowerShell):**
 ```bat
-git clone https://github.com/gozzkesshell/sales-clause-skill.git
-cd sales-clause-skill
+git clone https://github.com/gozzkesshell/sales-pipeline.git
+cd sales-pipeline
 ```
 
 **Mac / Linux:**
 ```bash
-git clone https://github.com/gozzkesshell/sales-clause-skill.git
-cd sales-clause-skill
+git clone https://github.com/gozzkesshell/sales-pipeline.git
+cd sales-pipeline
 ```
 
 ---
 
-### 2. Install Python dependencies
+#### 2. Install Python dependencies
 
 **Windows:**
 ```bat
@@ -92,7 +92,7 @@ pip install -r requirements.txt
 
 ---
 
-### 3. Configure your API token
+#### 3. Configure your API token
 
 Copy the example env file and fill in your Vayne token:
 
@@ -119,7 +119,7 @@ SCORE_THRESHOLD=60
 
 ---
 
-### 4. Add your ICP definitions
+#### 4. Add your ICP definitions
 
 Place PDF files describing your Ideal Customer Profiles in the `icp/` folder. Each PDF becomes a scoring dimension.
 
@@ -141,21 +141,71 @@ You can have **multiple ICPs** — each lead gets scored against all of them ind
 
 ---
 
-### 5. Open the project in Claude Code
+#### 5. Open the project in Claude Code
 
-**Windows:**
-```bat
-claude
-```
+From inside the project directory, run:
 
-**Mac / Linux:**
 ```bash
 claude
 ```
 
-Make sure you open Claude Code **from inside the project directory** so it picks up the `.claude/commands/` folder and the slash commands become available.
+Claude Code will automatically detect the `.claude/commands/` folder and load the slash commands. Type `/` to see them.
 
-> **Tip:** On first launch, type `/` to see all available commands for this project.
+---
+
+## How to install the skill in Claude Code
+
+> Claude Code is a terminal-based AI coding assistant made by Anthropic — **separate from the Claude.ai chat app**. The slash commands in this project only work inside Claude Code.
+
+### Step 1 — Install Claude Code
+
+Go to [claude.ai/code](https://claude.ai/code) and follow the install instructions for your OS.
+
+After install, verify it works by opening a terminal and typing:
+```bash
+claude --version
+```
+
+### Step 2 — Open the project
+
+The slash commands become available **automatically** as soon as you open Claude Code from inside the project folder. There is nothing extra to install or register — Claude Code picks up `.claude/commands/` by convention.
+
+**Windows:**
+```bat
+cd C:\path\to\sales-pipeline
+claude
+```
+
+**Mac:**
+```bash
+cd ~/Applications/sales-pipeline    # if installed via install-mac.command
+claude
+```
+
+> **Tip:** On Mac, use the `Launch Sales Pipeline` shortcut on your Desktop (created by `install-mac.command`) — it opens Claude Code in the right folder automatically.
+
+### Step 3 — Confirm the commands loaded
+
+Inside Claude Code, type `/` and you should see:
+
+```
+/sales-pipeline    Run the full pipeline end-to-end
+/scrape            Scrape leads from Sales Navigator
+/score             Score leads against your ICPs
+/post-enrich       Fetch recent LinkedIn posts for buying-intent signals
+/segment           Filter and export per-ICP CSVs
+```
+
+If the commands don't appear, make sure you launched Claude Code **from inside the project directory** (not from your home folder or elsewhere).
+
+### What is the difference between Claude.ai and Claude Code?
+
+| | Claude.ai (chat app) | Claude Code |
+|---|---|---|
+| What it is | AI chat app in browser or desktop | AI coding assistant in your terminal |
+| How you use it | Type messages | Type messages + slash commands |
+| Custom skills | Not supported | Supported via `.claude/commands/` |
+| This project works here? | ❌ No | ✅ Yes |
 
 ---
 
@@ -284,18 +334,6 @@ These files are ready to import directly into **Linked Helper** to launch campai
 
 ---
 
-#### `/enrich` — Add extra LinkedIn profile signals *(optional)*
-
-Fetches `followerCount`, `openToWork`, and `hiring` badge for each lead via Vayne's batch profile scraping. **Usually not needed** — the Vayne advanced export already contains all key fields for scoring.
-
-```
-/enrich
-```
-
-**Cost:** 18 Vayne credits per profile.
-
----
-
 ## Recommended workflow
 
 ### Standard run
@@ -331,12 +369,10 @@ Fetches `followerCount`, `openToWork`, and `hiring` badge for each lead via Vayn
 │       ├── scrape.md
 │       ├── score.md
 │       ├── post-enrich.md
-│       ├── segment.md
-│       └── enrich.md
+│       └── segment.md
 ├── pipeline/               ← Python scripts (called by the skills)
 │   ├── config.py           ← Loads .env, shared settings
 │   ├── scrape.py           ← Vayne order creation + CSV download
-│   ├── enrich.py           ← Batch LinkedIn profile scraping
 │   ├── post_enrich.py      ← LinkedIn post scraping
 │   └── segment.py          ← Score filtering + per-ICP CSVs
 ├── icp/                    ← Your ICP PDF definitions (add yours here)
@@ -347,6 +383,8 @@ Fetches `followerCount`, `openToWork`, and `hiring` badge for each lead via Vayn
 │   ├── post_enriched_leads.csv
 │   └── segments/
 │       └── <icp_name>.csv
+├── install-mac.command     ← One-click Mac installer
+├── INSTALL-MAC.md          ← Mac install walkthrough
 ├── .env                    ← Your secrets (gitignored)
 ├── .env.example            ← Template
 └── requirements.txt
@@ -359,7 +397,6 @@ Fetches `followerCount`, `openToWork`, and `hiring` badge for each lead via Vayn
 | Operation | Cost |
 |---|---|
 | Sales Navigator scraping | Depends on your Vayne plan |
-| Profile enrichment (`/enrich`) | 18 credits per profile |
 | Post scraping (`/post-enrich`) | 1 credit per post reactor (variable, unused refunded) |
 | URL validation | Free |
 | Credit estimation | Free |
@@ -379,11 +416,11 @@ Check your remaining credits anytime in the [Vayne dashboard](https://vayne.io).
 **Scoring produces empty CSV**
 → Check that `icp/` contains at least one PDF and that `data/raw_leads.csv` exists (run `/scrape` first).
 
+**Slash commands don't appear after typing `/`**
+→ Make sure you launched `claude` from inside the project directory, not from your home folder.
+
 **Post-enrich jobs time out**
 → Vayne post scraping can take several minutes per profile. Try reducing `--post-limit` or using `--time-limit week` instead of `month`.
-
-**`linkedin url` column not found during enrichment**
-→ The column name varies by Vayne export format. Open your CSV and check the actual column name — the script searches for common variants automatically.
 
 ---
 

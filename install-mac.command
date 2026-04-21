@@ -4,7 +4,7 @@
 
 set -e
 
-REPO_URL="https://github.com/gozzkesshell/sales-clause-skill/archive/refs/heads/master.zip"
+REPO_URL="https://github.com/gozzkesshell/sales-pipeline/archive/refs/heads/master.zip"
 INSTALL_DIR="$HOME/Applications/sales-pipeline"
 DESKTOP_LAUNCHER="$HOME/Desktop/Launch Sales Pipeline.command"
 
