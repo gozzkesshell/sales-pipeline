@@ -12,7 +12,7 @@ User input: $ARGUMENTS
 
 3. Run the segmentation script from the project root:
    ```
-   cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/segment.py [--input PATH] [--threshold N]
+   python pipeline/segment.py [--input PATH] [--threshold N]
    ```
 
 4. The script will:

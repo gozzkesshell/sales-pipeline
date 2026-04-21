@@ -11,7 +11,7 @@ User input: $ARGUMENTS
 
 2. Run the scraping script from the project root:
    ```
-   cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/scrape.py "<url>" [--limit N] [--name NAME]
+   python pipeline/scrape.py "<url>" [--limit N] [--name NAME]
    ```
 
 3. The script will:

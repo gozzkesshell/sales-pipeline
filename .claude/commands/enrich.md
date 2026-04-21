@@ -26,7 +26,7 @@ Run `/enrich` only if you specifically want those signals. For most scoring runs
 
 4. Run the enrichment script from the project root:
    ```
-   cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/enrich.py [--input PATH] [--output PATH]
+   python pipeline/enrich.py [--input PATH] [--output PATH]
    ```
 
 5. The script will:

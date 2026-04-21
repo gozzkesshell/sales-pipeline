@@ -27,7 +27,7 @@ Expected: `<sales_navigator_url> [--limit N] [--name NAME] [--threshold SCORE]`
 
 Run:
 ```
-cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/scrape.py "<url>" [--limit N] [--name NAME]
+python pipeline/scrape.py "<url>" [--limit N] [--name NAME]
 ```
 
 Wait for completion. Report how many leads were scraped and confirm `data/raw_leads.csv` was created.
@@ -69,7 +69,7 @@ Performed by Claude Code directly (no Python script):
 
 Run:
 ```
-cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/segment.py [--threshold N]
+python pipeline/segment.py [--threshold N]
 ```
 
 Creates `data/segments/<icp_name>.csv` for each ICP with qualifying leads.

@@ -34,17 +34,17 @@ Most valuable for **borderline leads** (e.g. score 40–70) where post activity 
 
    - "Run post-enrich on borderline leads only":
      ```
-     cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/post_enrich.py --min-score 40 --max-score 70
+     python pipeline/post_enrich.py --min-score 40 --max-score 70
      ```
 
    - "Run on all leads before scoring":
      ```
-     cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/post_enrich.py --input data/raw_leads.csv --output data/post_enriched_leads.csv
+     python pipeline/post_enrich.py --input data/raw_leads.csv --output data/post_enriched_leads.csv
      ```
 
    - "Run on top leads only (high confidence check)":
      ```
-     cd /c/Users/gozzk/projects/innotechfy/ai-automation && python pipeline/post_enrich.py --min-score 70 --post-limit 5 --time-limit week
+     python pipeline/post_enrich.py --min-score 70 --post-limit 5 --time-limit week
      ```
 
 4. Run the chosen command and wait for completion.
