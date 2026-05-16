@@ -1,11 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import requests; import dotenv; print\\(''Dependencies OK''\\)\")",
-      "Bash(pip install:*)",
-      "Bash(python -m pip install requests python-dotenv)",
-      "Bash(where python:*)",
-      "Bash(git add *)"
+      "Bash(PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe pipeline/scrape.py*)",
+      "Bash(PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe pipeline/post_enrich.py*)",
+      "Bash(PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe pipeline/segment.py*)",
+      "Bash(PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe -c *)",
+      "Bash(PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe -m pip*)",
+      "Bash(git add *)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git status)",
+      "Bash(git diff*)"
     ]
   }
 }
