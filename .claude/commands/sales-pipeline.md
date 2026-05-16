@@ -5,14 +5,22 @@ User input: $ARGUMENTS
 ## Pipeline Steps
 
 1. **Scrape** — Collect leads from Sales Navigator via Vayne API → `data/raw_leads.csv`
-2. **Score** — Score each lead on ICP fit with a short comment (done by Claude Code) → `data/scored_leads.csv`
+2. **Score** — Score each lead on ICP fit (done by Claude directly) → `data/scored_leads.csv`
 3. **Post-enrich** *(optional)* — Fetch recent LinkedIn posts for borderline leads → `data/post_enriched_leads.csv`
 4. **Re-score** *(if post-enriched)* — Re-run scoring on enriched file using post content as signal
 5. **Segment** — Filter high-scoring leads into per-ICP CSVs → `data/segments/<icp>.csv`
 
-> **Optional steps:** `/enrich` adds followerCount/openToWork/hiring. `/post-enrich` adds recent post content (strongest buying-intent signal). Both can be skipped — the Vayne advanced export already contains all core fields for scoring.
+---
 
 ## Instructions
+
+### 0. Pre-flight check
+
+Use the Read tool to check if `.env` exists. If it doesn't exist:
+1. Tell the user their Vayne API token is needed
+2. Ask them to paste their token
+3. Create `.env` from `.env.example` with their token filled in
+4. Continue — do NOT stop here if the token is provided
 
 ### Parse arguments
 Expected: `<sales_navigator_url> [--limit N] [--name NAME] [--threshold SCORE]`
@@ -25,51 +33,41 @@ Expected: `<sales_navigator_url> [--limit N] [--name NAME] [--threshold SCORE]`
 
 ### Step 1: Scrape
 
-Run:
+Run using the Python command from CLAUDE.md (no detection needed — use it directly):
 ```
-python pipeline/scrape.py "<url>" [--limit N] [--name NAME]
+PYTHONIOENCODING=utf-8 <PYTHON> pipeline/scrape.py "<url>" [--limit N] [--name NAME]
 ```
 
-Wait for completion. Report how many leads were scraped and confirm `data/raw_leads.csv` was created.
+Wait for completion. Report how many unique leads were scraped and confirm `data/raw_leads.csv` was created.
+
+**If the script warns about duplicate results across batches:** tell the user that their Vayne plan is returning the same leads for every order and that upgrading the plan or using multiple different search URLs is needed to get more unique leads.
 
 ---
 
 ### Step 2: Score
 
-Performed by Claude Code directly (no Python script):
+Performed by Claude directly — no script, no bash commands for extraction.
 
-1. Read all PDF files from `icp/` — each is an ICP definition. ICP name = filename without extension.
-2. Read `data/raw_leads.csv`. Key columns to use:
-   - `job title` — current role (heaviest weight for ICP match)
-   - `summary` — full LinkedIn About/bio
-   - `headline` — LinkedIn headline
-   - `job description` — current role description
-   - `skills` — skills list
-   - `company` — company name
-   - `linkedin company employee count` — numeric headcount (use for size check)
-   - `linkedin industry` — industry
-   - `location` — person's location
-   - `linkedin description`, `linkedin specialities` — company context
-   - `premium member`, `number of connections` — minor signals
-   - `job title (2)`, `job description (2)`, `company (2)` (and 3, 4) — career history
-3. Score each lead 0–100 per ICP — holistic fit judgment:
-   - Title match vs ICP target personas (heaviest weight)
-   - Company size vs ICP ideal/acceptable range
-   - Industry vs ICP primary/secondary industries
-   - Location vs ICP primary/secondary geographies
-   - Keyword signals in summary, headline, description, skills
-   - Minor: premium member, connections, career trajectory
-4. Write a short comment per lead per ICP (max 500 chars) naming the specific signals.
-5. Process in batches of 20. Write results to `data/scored_leads.csv` incrementally.
-   Output columns: all original columns + `score_<icp_name>` + `comment_<icp_name>` per ICP.
+1. Use the **Read tool** to read all PDF files from `icp/` (ICP name = filename without extension).
+2. Use the **Read tool** to read `data/raw_leads.csv`.
+3. Score every lead 0–100 per ICP inline — holistic fit judgment using:
+   - **Title** (heaviest): does it match ICP target personas?
+   - **Company size** (`linkedin company employee count`): ideal / acceptable / outside range?
+   - **Industry** (`linkedin industry`): primary / secondary / no match?
+   - **Location**: primary / secondary / not listed?
+   - **Keywords** in `summary`, `headline`, `job description`, `skills`, `linkedin description`
+   - **`recent_posts`** (if non-empty): strong buying-intent signal — quote relevant snippets
+   - **Minor**: `premium member`, `number of connections`, career trajectory
+4. Write a comment per lead per ICP (max 500 chars) naming specific signals.
+5. After scoring **all** leads, write `data/scored_leads.csv` in a **single** `python -c` command. Include all original columns plus `score_<icp_name>` and `comment_<icp_name>` per ICP.
 
 ---
 
 ### Step 3: Segment
 
-Run:
+Run using the Python command from CLAUDE.md (no detection needed — use it directly):
 ```
-python pipeline/segment.py [--threshold N]
+PYTHONIOENCODING=utf-8 <PYTHON> pipeline/segment.py [--threshold N]
 ```
 
 Creates `data/segments/<icp_name>.csv` for each ICP with qualifying leads.
@@ -83,3 +81,4 @@ After all steps:
 - Score distribution per ICP (80+, 60–79, 40–59, <40)
 - Qualified leads per ICP (above threshold)
 - File paths for each per-ICP CSV (ready for Linked Helper import)
+- If 0 qualified: diagnose why (wrong personas in search? wrong industry? low scores across board?) and suggest specific fixes

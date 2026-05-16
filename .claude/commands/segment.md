@@ -8,18 +8,13 @@ User input: $ARGUMENTS
    - Default input: `data/scored_leads.csv`
    - Default threshold: value from SCORE_THRESHOLD in .env (default 60)
 
-2. Verify the scored CSV exists. If not, tell the user to run `/score` first.
-
-3. Run the segmentation script from the project root:
+2. Run the segmentation script using the Python command from CLAUDE.md (no detection needed — use it directly):
    ```
-   python pipeline/segment.py [--input PATH] [--threshold N]
+   PYTHONIOENCODING=utf-8 <PYTHON> pipeline/segment.py [--input PATH] [--threshold N]
    ```
 
-4. The script will:
-   - Read the scored CSV
-   - For each ICP score column, filter leads >= threshold
-   - Write a separate CSV per ICP to `data/segments/<icp_name>.csv`
+3. The script filters leads by score threshold and writes one CSV per ICP to `data/segments/<icp_name>.csv`.
 
-5. Report: how many qualified leads per ICP, output file locations.
+4. Report: how many qualified leads per ICP, output file paths.
 
-These per-ICP CSVs are ready for manual import into Linked Helper to launch campaigns.
+These CSVs are ready for direct import into Linked Helper to launch campaigns.

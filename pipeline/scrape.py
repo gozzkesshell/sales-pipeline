@@ -231,11 +231,24 @@ def main():
         rows = results
 
     # 3. Deduplicate and write
+    raw_count = len(rows)
     rows = deduplicate(rows)
 
     if not rows:
         print("No leads collected.")
         sys.exit(1)
+
+    # Warn if Vayne returned mostly duplicate results across batches
+    if num_batches > 1:
+        duplicate_rate = (raw_count - len(rows)) / raw_count if raw_count else 0
+        if duplicate_rate > 0.5:
+            print(
+                f"\n⚠️  Duplicate results warning: {raw_count} rows fetched across {num_batches} orders, "
+                f"only {len(rows)} unique after deduplication ({duplicate_rate:.0%} duplicates).\n"
+                f"   Vayne is returning the same leads for every order on this search URL.\n"
+                f"   To get more unique leads: upgrade your Vayne plan for a higher per-order cap,\n"
+                f"   or use multiple different Sales Navigator search URLs.\n"
+            )
 
     fieldnames = list(rows[0].keys())
     with output.open("w", newline="", encoding="utf-8") as f:
