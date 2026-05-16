@@ -12,6 +12,7 @@ ICP_DIR = BASE_DIR / "icp"
 
 VAYNE_API_TOKEN = os.getenv("VAYNE_API_TOKEN")
 VAYNE_BASE_URL = "https://www.vayne.io"
+VAYNE_WEBHOOK_URL = os.getenv("VAYNE_WEBHOOK_URL")  # optional — Vayne POSTs completed CSV URL here
 SCORE_THRESHOLD = int(os.getenv("SCORE_THRESHOLD", "60"))
 
 
