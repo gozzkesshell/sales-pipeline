@@ -2,19 +2,27 @@
 
 ## Python
 
-Always use this exact Python executable — do not search for others:
-```
-PYTHONIOENCODING=utf-8 /c/Users/gozzk/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe
-```
+Detect the correct Python command for this machine:
+
+- **Mac / Linux:** use `python3`
+- **Windows (standard install):** use `python`
+- **Windows + Claude Code (Codex runtime):** check if this path exists first:
+  `/c/Users/<username>/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`
+  If it exists, use it. Otherwise fall back to `python`.
 
 Always set `PYTHONIOENCODING=utf-8` to avoid encoding errors on Windows.
 
-Always `cd` into the project root before running pipeline scripts:
-```
-cd /c/Users/gozzk/projects/innotechfy/ai-automation
+Run a one-liner to confirm which command works before the first script run:
+```bash
+PYTHONIOENCODING=utf-8 python3 -c "print('ok')" 2>/dev/null || \
+PYTHONIOENCODING=utf-8 python -c "print('ok')"
 ```
 
+Do **not** spend time searching for Python beyond the above check.
+
 ## Running pipeline scripts
+
+Replace `<PYTHON>` with whichever command works above.
 
 ```bash
 # Scrape
@@ -48,6 +56,6 @@ data/
 
 ## Do not
 
-- Do not search for Python or read pipeline scripts before running them
-- Do not use `python`, `python3`, or `py` — use the full path above
+- Do not read pipeline scripts before running them — the commands above are sufficient
 - Do not use PowerShell for running scripts — use Bash
+- Do not prompt for Python path confirmation if the one-liner above already confirmed it

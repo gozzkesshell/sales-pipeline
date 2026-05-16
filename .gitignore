@@ -8,3 +8,5 @@ __pycache__/
 .env
 data/
 manual_scrapper/*
+.claude/settings.local.json
+.claude/worktrees/
