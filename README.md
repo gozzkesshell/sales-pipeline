@@ -272,6 +272,7 @@ With options:
 |---|---|---|
 | `--limit N` | all | Max leads to scrape |
 | `--name NAME` | auto-generated | Vayne order name (must be unique) |
+| `--export-format FORMAT` | `advanced` | Vayne CSV export format: `advanced` or `simple` |
 | `--threshold N` | 60 (from .env) | Min score to qualify a lead |
 
 Claude will walk you through each step, ask for confirmation before credit-heavy operations, and show a summary at the end.
@@ -289,6 +290,7 @@ Claude will walk you through each step, ask for confirmation before credit-heavy
 ```
 
 - Validates the URL with Vayne before creating an order
+- Creates a single Vayne order with the requested limit (`100` in examples is not a hard cap)
 - Polls until scraping completes (shows live progress)
 - Downloads the **advanced** CSV export to `data/raw_leads.csv`
 - The advanced export already includes: full bio (`summary`), headline, job descriptions, company size, industry, skills, education, certifications

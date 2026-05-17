@@ -40,8 +40,6 @@ PYTHONIOENCODING=utf-8 <PYTHON> pipeline/scrape.py "<url>" [--limit N] [--name N
 
 Wait for completion. Report how many unique leads were scraped and confirm `data/raw_leads.csv` was created.
 
-**If the script warns about duplicate results across batches:** tell the user that their Vayne plan is returning the same leads for every order and that upgrading the plan or using multiple different search URLs is needed to get more unique leads.
-
 ---
 
 ### Step 2: Score

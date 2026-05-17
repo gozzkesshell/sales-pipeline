@@ -14,11 +14,10 @@ User input: $ARGUMENTS
    PYTHONIOENCODING=utf-8 <PYTHON> pipeline/scrape.py "<url>" [--limit N] [--name NAME]
    ```
 
-3. The script validates the URL, creates Vayne orders, polls until complete, deduplicates, and writes `data/raw_leads.csv`.
+3. The script validates the URL, creates one Vayne order with the requested limit, polls until complete, downloads the configured CSV export, deduplicates, and writes `data/raw_leads.csv`.
 
 4. Report results: how many unique leads were scraped and where the file is saved.
 
 If the script fails, read the error message and help the user fix it. Common issues:
 - **VAYNE_API_TOKEN not set** → guide user to create `.env` from `.env.example`
 - **Order name already exists** → add `--name` with a unique value
-- **Duplicate results warning** → Vayne plan is returning the same page for each order; user needs to upgrade plan or use a different search URL

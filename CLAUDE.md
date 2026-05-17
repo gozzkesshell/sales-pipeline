@@ -42,7 +42,7 @@ PYTHONIOENCODING=utf-8 <PYTHON> pipeline/segment.py [--threshold N]
 
 ```
 pipeline/
-  scrape.py        — Vayne API scraping (multi-order, parallel)
+  scrape.py        — Vayne API scraping (single order + CSV export download)
   post_enrich.py   — LinkedIn post scraping via Vayne
   segment.py       — Filter scored leads into per-ICP CSVs
   config.py        — Loads .env (VAYNE_API_TOKEN, SCORE_THRESHOLD=60)
