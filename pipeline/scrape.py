@@ -23,7 +23,7 @@ import requests
 
 from config import DATA_DIR, VAYNE_BASE_URL, require_vayne_token, vayne_headers
 
-DEFAULT_EXPORT_FORMAT = "advanced"
+DEFAULT_EXPORT_FORMAT = "simple"
 HTTP_TIMEOUT = 60
 
 
@@ -128,12 +128,12 @@ def poll_order(
 
 def export_file_url(order: dict[str, Any], export_format: str) -> str | None:
     """Return the completed export URL from an order, if present."""
-    if order.get("file_url"):
-        return order["file_url"]
-
     export = order.get("exports", {}).get(export_format, {})
     if export.get("status") == "completed" and export.get("file_url"):
         return export["file_url"]
+
+    if order.get("file_url"):
+        return order["file_url"]
 
     return None
 

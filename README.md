@@ -11,7 +11,7 @@ Sales Navigator URL
         │
         ▼
   1. /scrape          Vayne API creates an order, polls until done,
-                      downloads the advanced CSV → data/raw_leads.csv
+                      downloads the simple CSV → data/raw_leads.csv
 
         │  (optional)
         ▼
@@ -265,14 +265,14 @@ If they don't appear, make sure you launched `claude` from **inside the project 
 
 With options:
 ```
-/sales-pipeline <url> --limit 100 --name my-search --threshold 65
+/sales-pipeline <url> --limit 500 --name my-search --threshold 65
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--limit N` | all | Max leads to scrape |
 | `--name NAME` | auto-generated | Vayne order name (must be unique) |
-| `--export-format FORMAT` | `advanced` | Vayne CSV export format: `advanced` or `simple` |
+| `--export-format FORMAT` | `simple` | Vayne CSV export format: `advanced` or `simple` |
 | `--threshold N` | 60 (from .env) | Min score to qualify a lead |
 
 Claude will walk you through each step, ask for confirmation before credit-heavy operations, and show a summary at the end.
@@ -286,14 +286,14 @@ Claude will walk you through each step, ask for confirmation before credit-heavy
 ```
 /scrape <sales_navigator_url>
 /scrape <url> --limit 50
-/scrape <url> --limit 100 --name "Q2-SaaS-search"
+/scrape <url> --limit 500 --name "Q2-SaaS-search"
 ```
 
 - Validates the URL with Vayne before creating an order
-- Creates a single Vayne order with the requested limit (`100` in examples is not a hard cap)
+- Creates a single Vayne order with the requested limit (`500` in examples is not a hard cap)
 - Polls until scraping completes (shows live progress)
-- Downloads the **advanced** CSV export to `data/raw_leads.csv`
-- The advanced export already includes: full bio (`summary`), headline, job descriptions, company size, industry, skills, education, certifications
+- Downloads the **simple** CSV export to `data/raw_leads.csv` by default
+- Use `--export-format advanced` when you need the richer export fields such as full bio (`summary`), headline, job descriptions, company size, industry, skills, education, certifications
 
 ---
 
@@ -386,14 +386,14 @@ These files are ready to import directly into **Linked Helper** to launch campai
 
 ### Standard run
 ```
-/scrape <url> --limit 100
+/scrape <url> --limit 500
 /score
 /segment
 ```
 
 ### With post enrichment for borderline leads
 ```
-/scrape <url> --limit 100
+/scrape <url> --limit 500
 /score
 /post-enrich --min-score 40 --max-score 70
 /score --input data/post_enriched_leads.csv
@@ -402,7 +402,7 @@ These files are ready to import directly into **Linked Helper** to launch campai
 
 ### Full pipeline in one command
 ```
-/sales-pipeline <url> --limit 100
+/sales-pipeline <url> --limit 500
 ```
 
 ---

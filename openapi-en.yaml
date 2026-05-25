@@ -1,0 +1,2945 @@
+---
+openapi: 3.0.3
+info:
+  title: Vayne API
+  description: |
+    REST API for scraping LinkedIn Sales Navigator data.
+    Automate lead generation, company research, and contact enrichment using your LinkedIn session.
+
+    ## Authentication
+    All endpoints require a Bearer token. You can generate your API token in the **API Settings** section of your Dashboard.
+
+    ## Rate Limits
+    - Burst: 5 requests per second
+    - Sustained: 60 requests per minute
+  version: 1.0.0
+  contact:
+    url: https://www.vayne.io
+servers:
+- url: https://www.vayne.io
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: true
+      description: Bearer access token
+      schema:
+        type: string
+        example: Bearer <your_api_token>
+  responses:
+    Unauthorized:
+      description: 'Authentication failed: missing or invalid Bearer token.'
+      content:
+        application/json:
+          examples:
+            invalid_token:
+              summary: Invalid token
+              value:
+                error: Unauthorized
+                details: Invalid token
+            missing_token:
+              summary: Missing token
+              value:
+                error: Unauthorized
+                details: Missing token
+    Forbidden:
+      description: 'Access denied: your plan does not include API access.'
+      content:
+        application/json:
+          example:
+            error: Forbidden
+            details: Plan does not include API access
+    TooManyRequests:
+      description: |
+        Too Many Requests: Rate limit exceeded.
+        Limits:
+        - Burst: 5 requests per 1 second
+        - Sustained: 60 requests per 1 minute
+      headers:
+        Retry-After:
+          description: Seconds until the next allowed request.
+      content:
+        application/json:
+          example:
+            error: Too Many Requests
+            details: Rate limit exceeded. Please retry later.
+            limit: 60
+            period: 60
+            retry_after: 30
+    InternalServerError:
+      description: Internal server error. If the issue persists, please contact our
+        team.
+      content:
+        application/json:
+          example:
+            error: Internal server error
+            details: Unexpected error
+security:
+- BearerAuth: []
+paths:
+  "/api/orders":
+    get:
+      summary: List all orders
+      description: 'Returns a list of all non-expired orders for the authenticated
+        user, sorted by creation date (most recent first). Limited to 100 results.
+
+        '
+      tags:
+      - Orders
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: OK - Orders retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier of the order
+                          example: 123
+                        name:
+                          type: string
+                          description: Name of the order
+                          example: Y Combinator
+                        order_type:
+                          type: string
+                          enum:
+                          - leads
+                          - accounts
+                          description: Type of order (leads or accounts)
+                          example: leads
+                        scraping_status:
+                          type: string
+                          enum:
+                          - initialization
+                          - pending
+                          - segmenting
+                          - scraping
+                          - finished
+                          - failed
+                          description: Current scraping status
+                          example: finished
+                        limit:
+                          type: integer
+                          description: Maximum number of profiles to scrape
+                          example: 49
+                        scraped:
+                          type: integer
+                          description: Number of profiles scraped so far
+                          example: 49
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Date and time the order was created
+                          example: '2025-01-15T10:30:00.000Z'
+              example:
+                orders:
+                - id: 123
+                  name: Y Combinator
+                  order_type: leads
+                  scraping_status: finished
+                  limit: 49
+                  scraped: 49
+                  created_at: '2025-01-15T10:30:00.000Z'
+                - id: 124
+                  name: Sequoia Capital
+                  order_type: accounts
+                  scraping_status: scraping
+                  limit: 100
+                  scraped: 35
+                  created_at: '2025-01-16T14:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+    post:
+      summary: Create an order
+      description: 'Creates a new scraping order.
+
+        '
+      tags:
+      - Orders
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - url
+              properties:
+                name:
+                  type: string
+                  description: Order name
+                  example: Y Combinator
+                url:
+                  type: string
+                  format: uri
+                  description: URL to scrape
+                  example: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                limit:
+                  type: integer
+                  minimum: 0
+                  description: Maximum number of items to extract
+                  example:
+                email_enrichment:
+                  type: boolean
+                  description: Enable or disable email enrichment
+                  example: false
+                saved_search:
+                  type: boolean
+                  description: Create a saved search. Available only for leads.
+                  example: false
+                secondary_webhook:
+                  type: string
+                  format: uri
+                  description: Secondary webhook, leave empty unless you want a custom
+                    webhook for this order
+                  example: ''
+                export_format:
+                  type: string
+                  enum:
+                  - simple
+                  - advanced
+                  description: Export format (simple or advanced). If not provided,
+                    your default export format (configured in API Settings) will be
+                    used.
+                  example: simple
+      callbacks:
+        onOrderCompleted:
+          https://your-webhook-url.com/:
+            post:
+              summary: Notification sent when order is completed (sent to secondary_webhook
+                or your default webhook)
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          example: order.completed
+                        order_id:
+                          type: integer
+                          example: 123
+                        name:
+                          type: string
+                          example: Y Combinator
+                        export_format:
+                          type: string
+                          example: simple
+                        file_url:
+                          type: string
+                          format: uri
+                          example: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/68f78a1da1f35e6dd73aa638/Y-Combinator-simple.csv
+              responses:
+                '200':
+                  description: Notification sent successfully
+      responses:
+        '201':
+          description: Created successfully.
+          content:
+            application/json:
+              example:
+                order:
+                  id: 123
+                  url: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                  name: Y Combinator
+                  order_type: leads
+                  limit: 49
+                  total: 49
+                  scraping_status: initialization
+                  email_enrichment: false
+        '401':
+          description: 'Authentication failed: missing or invalid Bearer token, or
+            LinkedIn connection failed.'
+          content:
+            application/json:
+              examples:
+                invalid_token:
+                  "$ref": "#/components/responses/Unauthorized/content/application~1json/examples/invalid_token"
+                missing_token:
+                  "$ref": "#/components/responses/Unauthorized/content/application~1json/examples/missing_token"
+                linkedin_auth_invalid:
+                  summary: LinkedIn authentication failed
+                  value:
+                    error: Unauthorized
+                    details: LinkedIn authentication failed
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: 'Conflict: an order with this name already exists.'
+          content:
+            application/json:
+              example:
+                error: Conflict
+                details: Order name already exists
+        '422':
+          description: 'Unprocessable entity: the query URL is invalid, the parameters
+            are invalid, or the order record is invalid.'
+          content:
+            application/json:
+              examples:
+                invalid_url:
+                  summary: Invalid LinkedIn URL
+                  value:
+                    error: Unprocessable entity
+                    details: Invalid LinkedIn URL
+                invalid_parameters:
+                  summary: Invalid parameters
+                  value:
+                    error: Unprocessable entity
+                    details: Invalid parameters
+                not_enough_credits:
+                  summary: Not enough credits
+                  value:
+                    error: Unprocessable entity
+                    details: Not enough credits to create this order
+                saved_search_not_supported:
+                  summary: Saved search not supported for accounts
+                  value:
+                    error: Unprocessable entity
+                    details: Saved searches are not supported for accounts
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+  "/api/orders/{id}":
+    get:
+      summary: Get an order
+      description: 'Returns details of a specific order.
+
+        '
+      tags:
+      - Orders
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the order
+      responses:
+        '200':
+          description: OK - Order completed.
+          content:
+            application/json:
+              example:
+                order:
+                  id: 123
+                  url: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                  name: Y Combinator
+                  order_type: leads
+                  limit: 49
+                  scraped: 49
+                  total: 49
+                  matching: 35
+                  scraping_status: finished
+                  saved_search_id:
+                  email_enrichment: false
+                  exports:
+                    simple:
+                      status: completed
+                      file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/68f78a1da1f35e6dd73aa638/Y-Combinator-simple.csv
+                    advanced:
+                      status: not_started
+                      file_url:
+        '202':
+          description: Accepted - Order still processing.
+          content:
+            application/json:
+              example:
+                order:
+                  id: 123
+                  url: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                  name: Y Combinator
+                  order_type: leads
+                  limit: 49
+                  scraped: 0
+                  total: 49
+                  matching: 0
+                  scraping_status: scraping
+                  saved_search_id:
+                  export_status:
+                  file_url:
+                  email_enrichment: false
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: order not found.'
+          content:
+            application/json:
+              example:
+                error: Not found
+                details: Order not found
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/orders/{id}/export":
+    post:
+      summary: Generate an export
+      description: 'Triggers the generation of an export for a specific order.
+
+        '
+      tags:
+      - Orders
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - export_format
+              properties:
+                export_format:
+                  type: string
+                  enum:
+                  - simple
+                  - advanced
+                  description: Export format (e.g. 'simple' or 'advanced')
+                  example: advanced
+      responses:
+        '202':
+          description: Accepted - Export in progress
+          content:
+            application/json:
+              example:
+                order:
+                  id: 123
+                  url: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                  name: Y Combinator
+                  order_type: leads
+                  limit: 49
+                  scraped: 49
+                  total: 49
+                  matching: 35
+                  scraping_status: finished
+                  saved_search_id:
+                  email_enrichment: false
+                  exports:
+                    simple:
+                      status: completed
+                      file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/68f78a1da1f35e6dd73aa638/Y-Combinator-simple.csv
+                    advanced:
+                      status: pending
+                      file_url:
+        '200':
+          description: OK - Export completed
+          content:
+            application/json:
+              example:
+                order:
+                  id: 123
+                  url: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+                  name: Y Combinator
+                  order_type: leads
+                  limit: 49
+                  scraped: 49
+                  total: 49
+                  matching: 35
+                  scraping_status: finished
+                  saved_search_id:
+                  email_enrichment: false
+                  exports:
+                    simple:
+                      status: completed
+                      file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/68f78a1da1f35e6dd73aa638/Y-Combinator-simple.csv
+                    advanced:
+                      status: completed
+                      file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/68f78a1da1f35e6dd73aa638/Y-Combinator-advanced.csv
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: 'Conflict: another export format is already in progress.'
+          content:
+            application/json:
+              example:
+                error: Conflict
+                details: Another export format is already in progress
+        '404':
+          description: 'Not found: order not found.'
+          content:
+            application/json:
+              example:
+                error: Not found
+                details: Order not found
+        '422':
+          description: 'Unprocessable entity: invalid export format'
+          content:
+            application/json:
+              example:
+                error: Unprocessable entity
+                details: Invalid export format
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+  "/api/linkedin_authentication":
+    get:
+      summary: Check LinkedIn authentication status
+      description: Returns the current LinkedIn authentication status and whether
+        a cookie is configured
+      tags:
+      - LinkedIn Authentication
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: LinkedIn authentication status retrieved successfully
+          content:
+            application/json:
+              example:
+                linkedin_authentication: active
+                has_cookie: true
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+    patch:
+      summary: Update LinkedIn session cookie
+      description: Updates the LinkedIn session cookie.
+      tags:
+      - LinkedIn Authentication
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - linkedin_cookie
+              properties:
+                linkedin_cookie:
+                  type: string
+                  description: LinkedIn cookie value
+                  pattern: "^[A-Za-z0-9\\-_]+$"
+                  example: AQEDARabcdef123456789...
+      responses:
+        '200':
+          description: Cookie updated successfully
+          content:
+            application/json:
+              example:
+                message: LinkedIn cookie updated successfully
+                linkedin_authentication: checking
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: Invalid cookie format
+          content:
+            application/json:
+              example:
+                error: Unprocessable entity
+                details: Linkedin cookie is invalid. Please see help...
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/credits":
+    get:
+      summary: Get user credits and limits
+      description: Returns the current user's available credits, daily limits for
+        leads and accounts, and enrichment credits
+      tags:
+      - Credits
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: Credits and limits retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - credit_available
+                - daily_limit_leads
+                - daily_limit_accounts
+                - enrichment_credits
+                properties:
+                  credit_available:
+                    type: integer
+                    description: Total credits available for the user
+                    example: 1500
+                  daily_limit_leads:
+                    type: integer
+                    description: Remaining daily limit for leads collection
+                    example: 1200
+                  daily_limit_accounts:
+                    type: integer
+                    description: Remaining daily limit for accounts collection
+                    example: 180
+                  enrichment_credits:
+                    type: integer
+                    description: Remaining enrichment credits
+                    example: 50
+              example:
+                credit_available: 1500
+                daily_limit_leads: 1200
+                daily_limit_accounts: 180
+                enrichment_credits: 50
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/url_checks":
+    post:
+      summary: Check LinkedIn Sales Navigator URL
+      description: |
+        Validates a LinkedIn Sales Navigator URL and returns the number of prospects that can be scraped.
+        This endpoint does not create an order or consume credits.
+
+        **Response Time:** Typically 2-5 seconds, maximum 30 seconds before timeout.
+
+        **Rate Limit:** 10 requests per minute per user.
+      tags:
+      - URL Checks
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: LinkedIn Sales Navigator URL to validate
+                  example: https://www.linkedin.com/sales/search/people?query=(recentSearchParam%3A(id%3A4926526994%2CdoLogHistory%3Atrue)%2Cfilters%3AList((type%3ACURRENT_COMPANY%2Cvalues%3AList((id%3Aurn%253Ali%253Aorganization%253A167872%2Ctext%3AY%2520Combinator%2CselectionType%3AINCLUDED%2Cparent%3A(id%3A0))))%2C(type%3ACURRENT_TITLE%2Cvalues%3AList((text%3APartner%2CselectionType%3AINCLUDED)))))&sessionId=O8x5%2BlzwSXqYIohpj6p6DA%3D%3D&viewAllFilters=true
+      responses:
+        '200':
+          description: OK - URL is valid and prospect count retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - total
+                - type
+                properties:
+                  total:
+                    type: integer
+                    description: Number of prospects that can be scraped from this
+                      URL
+                    example: 1234
+                  type:
+                    type: string
+                    enum:
+                    - leads
+                    - accounts
+                    description: Type of prospects (leads or accounts)
+                    example: leads
+              example:
+                total: 1234
+                type: leads
+        '400':
+          description: 'Bad Request: URL parameter is required.'
+          content:
+            application/json:
+              example:
+                error: Bad Request
+                details: URL parameter is required
+        '401':
+          description: 'Authentication failed: missing or invalid Bearer token, or
+            LinkedIn connection failed.'
+          content:
+            application/json:
+              examples:
+                invalid_token:
+                  "$ref": "#/components/responses/Unauthorized/content/application~1json/examples/invalid_token"
+                missing_token:
+                  "$ref": "#/components/responses/Unauthorized/content/application~1json/examples/missing_token"
+                linkedin_auth_invalid:
+                  summary: LinkedIn authentication failed
+                  value:
+                    error: Unauthorized
+                    details: LinkedIn authentication invalid or expired
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: 'Unprocessable entity: the LinkedIn Sales Navigator URL is
+            invalid.'
+          content:
+            application/json:
+              example:
+                error: Unprocessable Entity
+                details: Invalid LinkedIn Sales Navigator URL
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '503':
+          description: 'Service Unavailable: LinkedIn check timed out after 30 seconds.
+            Please try again later.'
+          headers:
+            Retry-After:
+              description: Seconds until retry is recommended
+              schema:
+                type: integer
+                example: 60
+          content:
+            application/json:
+              example:
+                error: Service Unavailable
+                details: LinkedIn check timed out. Please try again later.
+                retry_after: 60
+        '500':
+          description: Internal server error. If the issue persists, please contact
+            our team.
+          content:
+            application/json:
+              example:
+                error: Internal Server Error
+                details: An unexpected error occurred
+  "/api/contact_finders":
+    get:
+      summary: List contact finder requests
+      description: 'Returns a list of recent API contact finder requests for the authenticated
+        user, sorted by creation date (most recent first). Limited to 100 results.
+
+        '
+      tags:
+      - Contact Finder
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: OK - Contact finder requests retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contact_finders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 456
+                        status:
+                          type: string
+                          enum:
+                          - pending
+                          - processing
+                          - completed
+                          - failed
+                          example: completed
+                        enrichment_type:
+                          type: string
+                          enum:
+                          - email_only
+                          - phone_only
+                          - both
+                          example: both
+                        linkedin_url:
+                          type: string
+                          nullable: true
+                          example: https://linkedin.com/in/john-doe
+                        first_name:
+                          type: string
+                          nullable: true
+                          example: John
+                        last_name:
+                          type: string
+                          nullable: true
+                          example: Doe
+                        company_domain:
+                          type: string
+                          nullable: true
+                          example: acme.com
+                        credits_used:
+                          type: integer
+                          example: 13
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: '2026-03-07T12:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+    post:
+      summary: Find email and/or phone for a contact
+      description: |
+        Submits a single-profile enrichment request to find work email and/or mobile phone number.
+
+        **Cost:** 1 enrichment credit per email lookup, 12 enrichment credits per phone lookup.
+
+        **Required fields depend on enrichment_type:**
+        - `email_only` or `both`: `first_name`, `last_name`, and `company_domain` are required
+        - `phone_only` or `both`: `linkedin_url` is required
+
+        **Rate Limit:** 60 requests per minute per user.
+
+        **Webhook:** If `webhook_url` is provided (or a default webhook is configured in API Settings), a signed callback will be sent when processing completes. The callback includes an `X-Vayne-Signature` header for verification.
+      tags:
+      - Contact Finder
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                linkedin_url:
+                  type: string
+                  description: LinkedIn profile URL (required for phone lookup)
+                  example: https://linkedin.com/in/john-doe
+                first_name:
+                  type: string
+                  description: Contact's first name (required for email lookup)
+                  example: John
+                last_name:
+                  type: string
+                  description: Contact's last name (required for email lookup)
+                  example: Doe
+                company_domain:
+                  type: string
+                  description: Company domain, e.g. acme.com (required for email lookup)
+                  example: acme.com
+                enrichment_type:
+                  type: string
+                  enum:
+                  - email_only
+                  - phone_only
+                  - both
+                  default: email_only
+                  description: 'Type of enrichment: email_only, phone_only, or both'
+                  example: email_only
+                webhook_url:
+                  type: string
+                  format: uri
+                  description: Optional webhook URL to receive results when processing
+                    completes. Must use HTTPS.
+                  example: https://your-server.com/callback
+      callbacks:
+        onContactFinderCompleted:
+          https://your-webhook-url.com/:
+            post:
+              summary: Notification sent when contact finder completes
+              description: |
+                Sent to the per-request webhook_url or your default webhook URL.
+                Includes an `X-Vayne-Signature` header containing `sha256=<hex_digest>` for HMAC verification using your webhook signing secret.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          example: contact_finder.completed
+                        contact_finder_id:
+                          type: integer
+                          example: 456
+                        status:
+                          type: string
+                          example: completed
+                        results:
+                          type: object
+                          properties:
+                            email_found:
+                              type: boolean
+                              description: Whether an email address was found
+                              example: true
+                            email:
+                              type: string
+                              nullable: true
+                              example: john.doe@acme.com
+                            email_ESP:
+                              type: string
+                              nullable: true
+                              example: Google
+                            phone_found:
+                              type: boolean
+                              description: Whether a phone number was found
+                              example: true
+                            phone:
+                              type: string
+                              nullable: true
+                              example: "+1234567890"
+                            phone_line_type:
+                              type: string
+                              nullable: true
+                              example: mobile
+                            phone_country:
+                              type: string
+                              nullable: true
+                              example: US
+              responses:
+                '200':
+                  description: Notification received successfully
+      responses:
+        '201':
+          description: Created - Enrichment request submitted successfully.
+          content:
+            application/json:
+              example:
+                contact_finder:
+                  id: 456
+                  status: pending
+                  enrichment_type: email_only
+                  linkedin_url: https://linkedin.com/in/john-doe
+                  first_name: John
+                  last_name: Doe
+                  company_domain: acme.com
+                  credits_reserved: 8
+                  created_at: '2026-03-07T12:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: 'Unprocessable entity: missing required fields or insufficient
+            credits.'
+          content:
+            application/json:
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    error: Unprocessable entity
+                    details: first_name is required for email enrichment
+                insufficient_credits:
+                  summary: Insufficient credits
+                  value:
+                    error: Unprocessable entity
+                    details: 'Insufficient enrichment credits. Required: 13, available:
+                      5'
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+  "/api/contact_finders/{id}":
+    get:
+      summary: Get contact finder result
+      description: |
+        Returns the current status and results of a contact finder request.
+
+        Returns HTTP 202 while processing is in progress, and HTTP 200 when completed or failed.
+      tags:
+      - Contact Finder
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Unique identifier of the contact finder request
+      responses:
+        '200':
+          description: OK - Contact finder completed.
+          content:
+            application/json:
+              example:
+                contact_finder:
+                  id: 456
+                  status: completed
+                  enrichment_type: both
+                  linkedin_url: https://linkedin.com/in/john-doe
+                  first_name: John
+                  last_name: Doe
+                  company_domain: acme.com
+                  credits_reserved: 13
+                  credits_used: 13
+                  results:
+                    email_found: true
+                    email: john.doe@acme.com
+                    email_ESP: Google
+                    phone_found: true
+                    phone: "+1234567890"
+                    phone_line_type: mobile
+                    phone_country: US
+                  created_at: '2026-03-07T12:00:00.000Z'
+        '202':
+          description: Accepted - Contact finder still processing.
+          content:
+            application/json:
+              example:
+                contact_finder:
+                  id: 456
+                  status: processing
+                  enrichment_type: both
+                  linkedin_url: https://linkedin.com/in/john-doe
+                  first_name: John
+                  last_name: Doe
+                  company_domain: acme.com
+                  credits_reserved: 13
+                  credits_used: 0
+                  results:
+                  created_at: '2026-03-07T12:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: contact finder not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: Contact finder not found
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/linkedin_scrapings":
+    post:
+      summary: Scrape a single LinkedIn URL
+      description: |
+        Scrapes a single LinkedIn profile or company URL and returns the data as JSON.
+
+        **For profiles:** Fetches profile data. Cost: 16 credits (with company details) or 8 credits (profile only).
+        Set `include_company_details` to `false` to skip the company data fetch and pay 8 credits instead of 16.
+        When omitted, defaults to `true` (includes company details).
+        **For companies:** Fetches company data. Cost: 8 credits. The `include_company_details` parameter is ignored.
+
+        The response includes an `openProfile` boolean field indicating whether the LinkedIn profile has an open profile (accepts InMail from anyone).
+
+        **Credits are refunded** if the scrape fails (timeout, external API error, etc.).
+
+        **Rate Limit:** 2 requests per second per user.
+
+        **Note:** This is a synchronous endpoint. The request blocks until the external API responds (typically 5-15 seconds).
+      tags:
+      - LinkedIn Scrapings
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - url
+              properties:
+                url:
+                  type: string
+                  description: LinkedIn profile URL (linkedin.com/in/...) or company
+                    URL (linkedin.com/company/...)
+                  example: https://www.linkedin.com/in/john-doe/
+                include_company_details:
+                  type: boolean
+                  description: When true (default), fetches additional company details
+                    for profile URLs (16 credits). When false, only fetches the profile
+                    (8 credits). Ignored for company URLs.
+                  default: true
+                  example: true
+            examples:
+              profile:
+                summary: Profile URL (with company details)
+                value:
+                  url: https://www.linkedin.com/in/john-doe/
+              profile_only:
+                summary: Profile URL (profile only, no company details)
+                value:
+                  url: https://www.linkedin.com/in/john-doe/
+                  include_company_details: false
+              company:
+                summary: Company URL
+                value:
+                  url: https://www.linkedin.com/company/google/
+      responses:
+        '200':
+          description: OK - Scraping completed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scraping_type:
+                    type: string
+                    enum:
+                    - profile
+                    - company
+                    description: Type of scraping performed
+                  credits_used:
+                    type: integer
+                    description: Number of credits consumed
+                  data:
+                    type: object
+                    nullable: true
+                    description: 'Scraped data. For profiles: filtered profile fields.
+                      For companies: raw company data.'
+                    properties:
+                      linkedinUrl:
+                        type: string
+                      firstName:
+                        type: string
+                      lastName:
+                        type: string
+                      headline:
+                        type: string
+                        nullable: true
+                      about:
+                        type: string
+                        nullable: true
+                      openToWork:
+                        type: boolean
+                      hiring:
+                        type: boolean
+                      premium:
+                        type: boolean
+                      openProfile:
+                        type: boolean
+                        description: True if composeOptionType is PREMIUM_INMAIL and
+                          premium is true
+                      connectionsCount:
+                        type: integer
+                        nullable: true
+                      followerCount:
+                        type: integer
+                        nullable: true
+                      location:
+                        type: string
+                        nullable: true
+                        description: Parsed location text (e.g. 'London, United Kingdom')
+                      experience:
+                        type: array
+                        maxItems: 10
+                        description: Up to 10 experiences. When include_company_details
+                          is true (default), the first experience includes a 'website'
+                          field from the company endpoint. When false, 'website' is
+                          null.
+                        items:
+                          type: object
+                          properties:
+                            position:
+                              type: string
+                              nullable: true
+                            description:
+                              type: string
+                              nullable: true
+                            startDate:
+                              type: string
+                              nullable: true
+                              description: 'Normalized: ''YYYY-MM'', ''YYYY'', or
+                                null'
+                            endDate:
+                              type: string
+                              nullable: true
+                              description: 'Normalized: ''YYYY-MM'', ''YYYY'', or
+                                null (null = current role)'
+                            companyId:
+                              type: string
+                              nullable: true
+                            companyName:
+                              type: string
+                              nullable: true
+                            companyLinkedinUrl:
+                              type: string
+                              nullable: true
+                            website:
+                              type: string
+                              nullable: true
+                              description: Only present on the first experience. Company
+                                website from company endpoint.
+                      education:
+                        type: array
+                        maxItems: 4
+                        description: Up to 4 education entries.
+                        items:
+                          type: object
+                          properties:
+                            schoolName:
+                              type: string
+                              nullable: true
+                            schoolLinkedinUrl:
+                              type: string
+                              nullable: true
+                            degree:
+                              type: string
+                              nullable: true
+                            period:
+                              type: string
+                              nullable: true
+                      profilePictureUrl:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: URL of the profile picture (default 800x800 cropped
+                          version). Null if the profile has no picture.
+              examples:
+                profile:
+                  summary: Profile scraping result (with company details)
+                  value:
+                    scraping_type: profile
+                    credits_used: 16
+                    data:
+                      linkedinUrl: https://www.linkedin.com/in/john-doe
+                      firstName: John
+                      lastName: Doe
+                      headline: Software Engineer at Google
+                      about: Passionate engineer...
+                      openToWork: false
+                      hiring: false
+                      premium: false
+                      openProfile: false
+                      connectionsCount: 500
+                      followerCount: 600
+                      location: San Francisco, United States
+                      experience:
+                      - position: Software Engineer
+                        description: Building search infrastructure
+                        startDate: 2023-01
+                        endDate:
+                        companyId: '1441'
+                        companyName: Google
+                        companyLinkedinUrl: https://www.linkedin.com/company/google/
+                        website: https://www.google.com
+                      - position: Junior Developer
+                        description: Full-stack development
+                        startDate: 2020-06
+                        endDate: 2022-12
+                        companyId: '12345'
+                        companyName: Startup Inc
+                        companyLinkedinUrl: https://www.linkedin.com/company/12345/
+                      education:
+                      - schoolName: MIT
+                        schoolLinkedinUrl: https://www.linkedin.com/company/1/
+                        degree: BSc Computer Science
+                        period: 2016 - 2020
+                      profilePictureUrl: https://media.licdn.com/dms/image/v2/example/profile-displayphoto-crop_800_800.jpg
+                profile_only:
+                  summary: Profile scraping result (profile only, no company details)
+                  value:
+                    scraping_type: profile
+                    credits_used: 8
+                    data:
+                      linkedinUrl: https://www.linkedin.com/in/john-doe
+                      firstName: John
+                      lastName: Doe
+                      headline: Software Engineer at Google
+                      about: Passionate engineer...
+                      openToWork: false
+                      hiring: false
+                      premium: true
+                      openProfile: true
+                      connectionsCount: 500
+                      followerCount: 600
+                      location: San Francisco, United States
+                      experience:
+                      - position: Software Engineer
+                        description: Building search infrastructure
+                        startDate: 2023-01
+                        endDate:
+                        companyId: '1441'
+                        companyName: Google
+                        companyLinkedinUrl: https://www.linkedin.com/company/google/
+                      - position: Junior Developer
+                        description: Full-stack development
+                        startDate: 2020-06
+                        endDate: 2022-12
+                        companyId: '12345'
+                        companyName: Startup Inc
+                        companyLinkedinUrl: https://www.linkedin.com/company/12345/
+                      education:
+                      - schoolName: MIT
+                        schoolLinkedinUrl: https://www.linkedin.com/company/1/
+                        degree: BSc Computer Science
+                        period: 2016 - 2020
+                      profilePictureUrl: https://media.licdn.com/dms/image/v2/example/profile-displayphoto-crop_800_800.jpg
+                company:
+                  summary: Company scraping result
+                  value:
+                    scraping_type: company
+                    credits_used: 8
+                    data:
+                      name: Google
+                      industry: Technology
+                      employeeCount: 150000
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: 'Unprocessable entity: invalid URL or insufficient credits.'
+          content:
+            application/json:
+              examples:
+                invalid_url:
+                  summary: Invalid URL
+                  value:
+                    error: Unprocessable entity
+                    details: URL must be a LinkedIn profile (linkedin.com/in/) or
+                      company (linkedin.com/company/) URL
+                insufficient_credits:
+                  summary: Insufficient credits
+                  value:
+                    error: Unprocessable entity
+                    details: Insufficient credits. You have 5 credits, but 16 are
+                      required.
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '502':
+          description: 'Bad gateway: external API returned an error.'
+          content:
+            application/json:
+              example:
+                error: Bad Gateway
+                details: Profile fetch failed. Please try again later.
+        '503':
+          description: 'Service unavailable: all scraping slots are in use or external
+            API rate limit reached.'
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+                example: 3
+          content:
+            application/json:
+              example:
+                error: Service Unavailable
+                details: All scraping slots are currently in use. Please retry shortly.
+        '504':
+          description: 'Gateway timeout: external API did not respond in time.'
+          content:
+            application/json:
+              example:
+                error: Gateway Timeout
+                details: Profile fetch timed out. The external service did not respond
+                  in time.
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+  "/api/linkedin_scrapings/batch":
+    post:
+      summary: Scrape multiple LinkedIn URLs (async)
+      description: |
+        Submits a batch of LinkedIn URLs for asynchronous scraping. Returns a job ID that can be polled for results.
+
+        All URLs must be the same type (all profiles or all companies). Maximum 2,000 URLs per batch.
+
+        **Cost:** 16 credits per profile URL (with company details) or 8 credits (profile only), 8 credits per company URL. Credits are deducted upfront.
+        Set `include_company_details` to `false` for profile URLs to skip company data and pay 8 credits per URL instead of 16. Defaults to `true`. Ignored for company URLs.
+
+        **Rate Limit:** 5 requests per minute per user.
+
+        **Webhook:** If a `webhook_url` is provided, a signed callback will be sent when the batch scraping completes. The callback includes an `X-Vayne-Signature` header for HMAC verification using your webhook signing secret.
+      tags:
+      - LinkedIn Scrapings
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - urls
+              properties:
+                name:
+                  type: string
+                  description: Optional name for this batch (auto-generated if blank,
+                    max 100 characters)
+                  example: My batch scraping
+                urls:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of LinkedIn URLs to scrape
+                  example:
+                  - https://www.linkedin.com/in/john-doe/
+                  - https://www.linkedin.com/in/jane-smith/
+                webhook_url:
+                  type: string
+                  format: uri
+                  description: Optional webhook URL to receive a notification when
+                    the batch scraping completes. Must be a valid HTTP or HTTPS URL.
+                  example: https://your-server.com/callback
+                include_company_details:
+                  type: boolean
+                  description: When true (default), fetches additional company details
+                    for profile URLs (16 credits). When false, only fetches the profile
+                    (8 credits). Ignored for company URLs.
+                  default: true
+                  example: true
+      responses:
+        '201':
+          description: Created - Batch scraping job submitted successfully.
+          content:
+            application/json:
+              example:
+                id: 123
+                name: My batch scraping
+                status: pending
+                scraping_type: profile
+                include_company_details: true
+                total_urls: 2
+                credits_used: 32
+                created_at: '2026-03-11T12:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: 'Conflict: a scraping with this name already exists.'
+          content:
+            application/json:
+              example:
+                error: Conflict
+                details: A LinkedIn scraping with this name already exists
+        '422':
+          description: 'Unprocessable entity: invalid URLs, mixed types, or insufficient
+            credits.'
+          content:
+            application/json:
+              examples:
+                no_urls:
+                  summary: No URLs provided
+                  value:
+                    error: Unprocessable entity
+                    details: Please provide at least one LinkedIn URL
+                mixed_types:
+                  summary: Mixed URL types
+                  value:
+                    error: Unprocessable entity
+                    details: Cannot mix profile and company URLs. All URLs must be
+                      the same type.
+                insufficient_credits:
+                  summary: Insufficient credits
+                  value:
+                    error: Unprocessable entity
+                    details: This requires 320 credits (20 URLs × 16 credits each),
+                      but you only have 100 credits available.
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+      callbacks:
+        onLinkedinScrapingCompleted:
+          "{$request.body#/webhook_url}":
+            post:
+              summary: Notification sent when batch scraping completes
+              description: |
+                Sent to the per-request webhook_url when the batch scraping job completes.
+                Includes an `X-Vayne-Signature` header containing `sha256=<hex_digest>` for HMAC verification using your webhook signing secret.
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          example: linkedin_scraping.completed
+                        id:
+                          type: integer
+                          example: 16
+                        name:
+                          type: string
+                          example: My batch scraping 3
+                        status:
+                          type: string
+                          example: completed
+                        scraping_type:
+                          type: string
+                          enum:
+                          - profile
+                          - company
+                          example: profile
+                        total_urls:
+                          type: integer
+                          example: 4
+                        processed_urls:
+                          type: integer
+                          example: 4
+                        successes:
+                          type: integer
+                          example: 4
+                        credits_used:
+                          type: integer
+                          example: 64
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: '2026-03-12T16:57:32.616Z'
+              responses:
+                '200':
+                  description: Notification received successfully
+  "/api/linkedin_scrapings/{id}":
+    get:
+      summary: Get batch scraping status and results
+      description: |
+        Returns the current status of a batch scraping job and its results when complete.
+
+        Returns HTTP 202 while processing is in progress, and HTTP 200 when completed or failed.
+
+        Results are paginated (default 100, max 500 per page).
+
+        **Rate Limit:** 30 requests per minute per user.
+      tags:
+      - LinkedIn Scrapings
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the batch scraping job
+        schema:
+          type: integer
+          example: 123
+      - name: page
+        in: query
+        required: false
+        description: 'Page number for results pagination (default: 1)'
+        schema:
+          type: integer
+          default: 1
+          example: 1
+      - name: per_page
+        in: query
+        required: false
+        description: 'Results per page (default: 100, max: 500)'
+        schema:
+          type: integer
+          default: 100
+          maximum: 500
+          example: 100
+      responses:
+        '200':
+          description: OK - Batch scraping completed.
+          content:
+            application/json:
+              example:
+                id: 123
+                name: My batch scraping
+                status: completed
+                scraping_type: profile
+                include_company_details: true
+                total_urls: 2
+                processed_urls: 2
+                successes: 2
+                credits_used: 32
+                created_at: '2026-03-11T12:00:00.000Z'
+                results:
+                - linkedin_url: https://www.linkedin.com/in/john-doe/
+                  status: success
+                  data:
+                    linkedinUrl: https://www.linkedin.com/in/john-doe
+                    firstName: John
+                    lastName: Doe
+                    headline: Software Engineer at Google
+                    about: Passionate engineer...
+                    openToWork: false
+                    hiring: false
+                    premium: false
+                    openProfile: false
+                    connectionsCount: 500
+                    followerCount: 600
+                    location: San Francisco, United States
+                    experience:
+                    - position: Software Engineer
+                      description:
+                      startDate: 2023-01
+                      endDate:
+                      companyId: '1441'
+                      companyName: Google
+                      companyLinkedinUrl: https://www.linkedin.com/company/google/
+                      website: https://www.google.com
+                    education:
+                    - schoolName: MIT
+                      schoolLinkedinUrl: https://www.linkedin.com/company/1/
+                      degree: BSc Computer Science
+                      period: 2016 - 2020
+                    profilePictureUrl: https://media.licdn.com/dms/image/v2/example/profile-displayphoto-crop_800_800.jpg
+                  error_message:
+                - linkedin_url: https://www.linkedin.com/in/jane-smith/
+                  status: failed
+                  data:
+                  error_message: Profile fetch timed out
+                pagination:
+                  page: 1
+                  per_page: 100
+                  total_results: 2
+        '202':
+          description: Accepted - Batch scraping still processing.
+          content:
+            application/json:
+              example:
+                id: 123
+                name: My batch scraping
+                status: processing
+                scraping_type: profile
+                include_company_details: true
+                total_urls: 50
+                processed_urls: 25
+                successes: 24
+                credits_used: 800
+                created_at: '2026-03-11T12:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: scraping job not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: LinkedIn scraping not found
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/post_scrapers":
+    post:
+      summary: Create a post scraper
+      description: |
+        Creates a new post scraper to extract profiles from LinkedIn post interactions.
+
+        **Two scrape modes:**
+        - `single_post`: Scrape profiles who reacted to or commented on a specific post. Requires `post_url`.
+        - `profile_posts`: Scrape all recent posts from a LinkedIn profile and extract everyone who interacted with them. Requires `profile_url`.
+
+        **Options for `profile_posts` mode:**
+        - `time_limit`: Only scrape posts published within a time window. Accepted values: `1h` (last hour), `24h` (last 24 hours), `week` (last 7 days), `month` (last 30 days). If omitted, all recent posts are included.
+        - `post_count_limit`: Maximum number of posts to scrape. Default: 20. Range: 1–20.
+        - `estimated_credits`: Pass the value returned by the estimate endpoint to reserve the right amount of credits.
+
+        **Recommended workflow for `profile_posts` mode:**
+        1. Call `POST /api/post_scrapers/estimate` with `profile_url`, `time_limit`, and `post_count_limit` to preview the number of posts and estimated credit cost.
+        2. Pass the returned `estimated_credits` value when creating the post scraper so the correct amount is reserved upfront.
+
+        **Cost:** Credits are reserved upfront (100 by default for `single_post`, or the `estimated_credits` value for `profile_posts`). Actual cost is 1 credit per profile found. Unused credits are refunded automatically after scraping completes.
+
+        **Webhook:** If `webhook_url` is provided (or a default webhook is configured in your API settings), a signed callback will be sent when processing completes.
+      tags:
+      - Post Scrapers
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - scrape_mode
+              properties:
+                scrape_mode:
+                  type: string
+                  enum:
+                  - single_post
+                  - profile_posts
+                  description: 'Scrape mode: `single_post` (scrape one post) or `profile_posts`
+                    (scrape recent posts from a profile)'
+                  example: single_post
+                name:
+                  type: string
+                  description: Optional name for this post scraper. Auto-generated
+                    if blank. Max 100 characters. Must be unique.
+                  example: My post scraper
+                post_url:
+                  type: string
+                  format: uri
+                  description: LinkedIn post URL. Required for `single_post` mode.
+                    Must contain `linkedin.com/posts/` or `linkedin.com/feed/update/`.
+                  example: https://www.linkedin.com/feed/update/urn:li:activity:7654321/
+                profile_url:
+                  type: string
+                  format: uri
+                  description: LinkedIn profile URL. Required for `profile_posts`
+                    mode. Must contain `linkedin.com/in/`.
+                  example: https://www.linkedin.com/in/john-doe/
+                time_limit:
+                  type: string
+                  enum:
+                  - 1h
+                  - 24h
+                  - week
+                  - month
+                  description: 'Only scrape posts published within this time window.
+                    Only applies to `profile_posts` mode. Values: `1h` (last hour),
+                    `24h` (last 24 hours), `week` (last 7 days), `month` (last 30
+                    days). If omitted, all recent posts are included.'
+                  example: week
+                post_count_limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                  description: 'Maximum number of posts to scrape. Only applies to
+                    `profile_posts` mode. Default: 20. Range: 1-20.'
+                  example: 10
+                estimated_credits:
+                  type: integer
+                  description: Pre-calculated credit estimate from the `/api/post_scrapers/estimate`
+                    endpoint. Only applies to `profile_posts` mode. When provided,
+                    this amount is reserved upfront instead of the default 100 credits.
+                    Recommended to avoid over-reserving credits.
+                  example: 450
+                webhook_url:
+                  type: string
+                  format: uri
+                  description: Optional webhook URL to receive a notification when
+                    scraping completes. Must use HTTPS in production.
+                  example: https://your-server.com/callback
+            examples:
+              single_post:
+                summary: Single post mode
+                value:
+                  scrape_mode: single_post
+                  name: Post reactions scraper
+                  post_url: https://www.linkedin.com/feed/update/urn:li:activity:7654321/
+              profile_posts:
+                summary: Profile posts mode
+                value:
+                  scrape_mode: profile_posts
+                  name: Profile posts scraper
+                  profile_url: https://www.linkedin.com/in/john-doe/
+                  time_limit: week
+                  post_count_limit: 10
+                  estimated_credits: 450
+      callbacks:
+        onPostScraperCompleted:
+          "{$request.body#/webhook_url}":
+            post:
+              summary: Notification sent when post scraper completes
+              description: |
+                Sent to the per-request webhook_url or your default webhook URL.
+                Includes an `X-Vayne-Signature` header containing `sha256=<hex_digest>` for HMAC verification using your webhook signing secret.
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          example: post_scraper.completed
+                        post_scraper:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 42
+                            name:
+                              type: string
+                              example: Post reactions scraper
+                            status:
+                              type: string
+                              example: completed
+                            scrape_mode:
+                              type: string
+                              enum:
+                              - single_post
+                              - profile_posts
+                              example: single_post
+                            total_posts:
+                              type: integer
+                              example: 1
+                            total_profiles:
+                              type: integer
+                              example: 85
+                            credits_used:
+                              type: integer
+                              example: 85
+                            file_url:
+                              type: string
+                              format: uri
+                              description: URL of the CSV (single_post) or ZIP (profile_posts)
+                                export containing all scraped profiles.
+                              example: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/post-scraper-42.csv
+                            created_at:
+                              type: string
+                              format: date-time
+                              example: '2026-03-30T10:00:00.000Z'
+                            posts:
+                              type: array
+                              description: Scraped posts with their metadata. Profile
+                                data is in the file_url export.
+                              items:
+                                type: object
+                                properties:
+                                  post_url:
+                                    type: string
+                                    example: https://www.linkedin.com/feed/update/urn:li:activity:7654321/
+                                  posted_at:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
+                                    example: '2026-03-28T08:00:00.000Z'
+                                  author_name:
+                                    type: string
+                                    nullable: true
+                                    description: Name of the post author. Always present
+                                      in profile_posts mode. May be null in single_post
+                                      mode if the author did not comment on their
+                                      own post.
+                                    example: Jane Smith
+                                  author_linkedin_url:
+                                    type: string
+                                    nullable: true
+                                    description: LinkedIn URL of the post author.
+                                      Same nullability rules as author_name.
+                                    example: https://www.linkedin.com/in/jane-smith/
+                                  content:
+                                    type: string
+                                    nullable: true
+                                    example: Excited to announce our new product launch...
+                                  estimated_likes:
+                                    type: integer
+                                    example: 150
+                                  estimated_comments:
+                                    type: integer
+                                    example: 42
+              responses:
+                '200':
+                  description: Notification received successfully
+      responses:
+        '201':
+          description: Created - Post scraper submitted successfully.
+          content:
+            application/json:
+              example:
+                post_scraper:
+                  id: 42
+                  name: Post reactions scraper
+                  status: pending
+                  scrape_mode: single_post
+                  credits_reserved: 100
+                  created_at: '2026-03-30T10:00:00.000Z'
+        '400':
+          description: 'Bad request: missing or invalid scrape_mode.'
+          content:
+            application/json:
+              example:
+                error: Bad Request
+                details: scrape_mode is required and must be single_post or profile_posts
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: 'Conflict: a post scraper with this name already exists.'
+          content:
+            application/json:
+              example:
+                error: Conflict
+                details: A post scraper with this name already exists
+        '422':
+          description: 'Unprocessable entity: invalid parameters or insufficient credits.'
+          content:
+            application/json:
+              examples:
+                invalid_params:
+                  summary: Invalid parameters
+                  value:
+                    error: Unprocessable entity
+                    details: post_url is required for single_post mode
+                insufficient_credits:
+                  summary: Insufficient credits
+                  value:
+                    error: Unprocessable entity
+                    details: Insufficient credits. You have 50 credits, but 100 are
+                      required.
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+    get:
+      summary: List post scrapers
+      description: 'Returns a list of all API post scrapers for the authenticated
+        user, sorted by creation date (most recent first). Limited to 100 results.
+
+        '
+      tags:
+      - Post Scrapers
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: OK - Post scrapers retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  post_scrapers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier of the post scraper
+                          example: 42
+                        name:
+                          type: string
+                          description: Name of the post scraper
+                          example: Post reactions scraper
+                        status:
+                          type: string
+                          enum:
+                          - pending
+                          - processing
+                          - completed
+                          - failed
+                          description: Current status
+                          example: completed
+                        scrape_mode:
+                          type: string
+                          enum:
+                          - single_post
+                          - profile_posts
+                          description: Scrape mode used
+                          example: single_post
+                        total_posts:
+                          type: integer
+                          description: Number of posts scraped
+                          example: 1
+                        total_profiles:
+                          type: integer
+                          description: Number of profiles found
+                          example: 85
+                        credits_used:
+                          type: integer
+                          description: Credits consumed
+                          example: 85
+                        file_url:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL to download the CSV export
+                          example: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/post-scraper-42.csv
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Date and time the post scraper was created
+                          example: '2026-03-30T10:00:00.000Z'
+              example:
+                post_scrapers:
+                - id: 42
+                  name: Post reactions scraper
+                  status: completed
+                  scrape_mode: single_post
+                  total_posts: 1
+                  total_profiles: 85
+                  credits_used: 85
+                  file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/post-scraper-42.csv
+                  created_at: '2026-03-30T10:00:00.000Z'
+                - id: 43
+                  name: Profile posts scraper
+                  status: processing
+                  scrape_mode: profile_posts
+                  total_posts: 5
+                  total_profiles: 0
+                  credits_used: 0
+                  file_url:
+                  created_at: '2026-03-30T11:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/post_scrapers/{id}":
+    get:
+      summary: Get post scraper status and results
+      description: |
+        Returns the current status of a post scraper and its results when complete.
+
+        Returns HTTP 202 while processing is in progress, and HTTP 200 when completed or failed.
+
+        Results are paginated (default 100, max 500 per page).
+      tags:
+      - Post Scrapers
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the post scraper
+        schema:
+          type: integer
+          example: 42
+      - name: page
+        in: query
+        required: false
+        description: 'Page number for results pagination (default: 1)'
+        schema:
+          type: integer
+          default: 1
+          example: 1
+      - name: per_page
+        in: query
+        required: false
+        description: 'Results per page (default: 100, max: 500)'
+        schema:
+          type: integer
+          default: 100
+          maximum: 500
+          example: 100
+      responses:
+        '200':
+          description: OK - Post scraper completed.
+          content:
+            application/json:
+              example:
+                id: 42
+                name: Post reactions scraper
+                status: completed
+                scrape_mode: single_post
+                total_posts: 1
+                total_profiles: 85
+                credits_used: 85
+                file_url: https://vayne-production-export.s3.eu-west-3.amazonaws.com/exports/post-scraper-42.csv
+                created_at: '2026-03-30T10:00:00.000Z'
+                posts:
+                - post_url: https://www.linkedin.com/feed/update/urn:li:activity:7654321/
+                  posted_at: '2026-03-28T08:00:00.000Z'
+                  author_name: Jane Smith
+                  author_linkedin_url: https://www.linkedin.com/in/jane-smith/
+                  content: Excited to announce our new product launch...
+                  estimated_likes: 150
+                  estimated_comments: 42
+                  profiles:
+                  - name: Jane Smith
+                    linkedin_url: https://www.linkedin.com/in/jane-smith/
+                    position: VP Marketing at Acme Corp
+                    reaction_type: like
+                    has_comment: false
+                    comment_text:
+                  - name: Bob Johnson
+                    linkedin_url: https://www.linkedin.com/in/bob-johnson/
+                    position: CEO at Startup Inc
+                    reaction_type: celebrate
+                    has_comment: true
+                    comment_text: Congratulations! This is amazing.
+                pagination:
+                  page: 1
+                  per_page: 100
+                  total_results: 85
+        '202':
+          description: Accepted - Post scraper still processing.
+          content:
+            application/json:
+              example:
+                id: 42
+                name: Post reactions scraper
+                status: processing
+                scrape_mode: single_post
+                total_posts: 0
+                total_profiles: 0
+                credits_used: 0
+                created_at: '2026-03-30T10:00:00.000Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: post scraper not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: Post scraper not found
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+  "/api/post_scrapers/estimate":
+    post:
+      summary: Estimate credits for profile posts scraping
+      description: |
+        Estimates the number of posts, people, and credits for a profile_posts scrape before creating it.
+
+        This endpoint does not create a post scraper or consume credits.
+      tags:
+      - Post Scrapers
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - profile_url
+              properties:
+                profile_url:
+                  type: string
+                  format: uri
+                  description: LinkedIn profile URL to estimate (required)
+                  example: https://www.linkedin.com/in/john-doe/
+                time_limit:
+                  type: string
+                  enum:
+                  - 1h
+                  - 24h
+                  - week
+                  - month
+                  description: 'Only consider posts published within this time window.
+                    Values: `1h` (last hour), `24h` (last 24 hours), `week` (last
+                    7 days), `month` (last 30 days). If omitted, all recent posts
+                    are included.'
+                  example: week
+                post_count_limit:
+                  type: integer
+                  description: 'Maximum number of posts to consider. Default: 20.
+                    Range: 1-20.'
+                  example: 10
+      responses:
+        '200':
+          description: OK - Estimation completed successfully.
+          content:
+            application/json:
+              example:
+                post_count: 8
+                estimated_people: 340
+                estimated_credits: 340
+        '400':
+          description: 'Bad request: profile_url is required.'
+          content:
+            application/json:
+              example:
+                error: Bad Request
+                details: profile_url is required
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: 'Unprocessable entity: invalid profile URL or estimation failed.'
+          content:
+            application/json:
+              example:
+                error: Unprocessable entity
+                details: Invalid LinkedIn profile URL
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+  "/api/find_people":
+    post:
+      summary: Search and enrich LinkedIn profiles
+      description: |
+        Search for LinkedIn profiles by company, job title, and location, then enrich each profile with detailed data (headline, about, connections, etc.).
+
+        **Cost:** 5 scraping credits per enrichable profile (profiles with a LinkedIn URL). Hidden profiles (no LinkedIn URL) are included for free. Credits reserved = `limit` × 5 (default 50, max 150). Unused credits are refunded automatically.
+
+        **Rate Limit:** 2 requests per second per user.
+
+        **Sync mode (default):** If no `webhook_url` is provided, the request blocks until processing completes (10-20 seconds) and returns the full results.
+
+        **Async mode:** If a `webhook_url` is provided, the request returns immediately with `202 Accepted` and the search ID. Results are pushed to the webhook when processing completes. Use `GET /api/find_people/{id}` to poll status.
+      tags:
+      - Find People
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - companies
+              - jobtitles
+              properties:
+                companies:
+                  type: string
+                  description: 'LinkedIn company URLs or company IDs, comma-separated
+                    (required). Example: https://www.linkedin.com/company/google,1441'
+                  example: https://www.linkedin.com/company/google,1441
+                jobtitles:
+                  type: string
+                  description: 'Job titles to search for, comma-separated (required).
+                    Example: marketing,CMO'
+                  example: marketing
+                locations:
+                  type: string
+                  description: 'Locations to filter by, comma-separated (optional).
+                    Example: Berlin,London'
+                  example: Berlin
+                limit:
+                  type: integer
+                  description: Maximum number of profiles to return (optional, 1-30,
+                    default 10). Credits are reserved based on this value (limit ×
+                    5 credits).
+                  example: 10
+                  minimum: 1
+                  maximum: 30
+                  default: 10
+                webhook_url:
+                  type: string
+                  description: Optional webhook URL to receive results when processing
+                    completes. Must use HTTPS. When provided, the request is processed
+                    asynchronously.
+                  example: https://example.com/webhooks/find-people
+      responses:
+        '200':
+          description: Search and enrichment completed successfully (sync mode).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalResults:
+                    type: integer
+                    description: Total number of matching profiles found on LinkedIn
+                    example: 19
+                  totalReturned:
+                    type: integer
+                    description: Number of profiles returned in this response
+                    example: 10
+                  creditsCharged:
+                    type: integer
+                    description: Total credits charged for this request (5 per enrichable
+                      profile)
+                    example: 40
+                  profiles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        enriched:
+                          type: boolean
+                          description: Whether the profile was successfully enriched
+                            with detailed data
+                          example: true
+                        linkedinUrl:
+                          type: string
+                          nullable: true
+                          description: LinkedIn profile URL
+                          example: https://www.linkedin.com/in/alexorig
+                        firstName:
+                          type: string
+                          nullable: true
+                          description: First name
+                          example: Alex
+                        lastName:
+                          type: string
+                          nullable: true
+                          description: Last name
+                          example: Schultz
+                        position:
+                          type: string
+                          nullable: true
+                          description: Current position title (from first experience)
+                          example: CMO & VP Analytics
+                        description:
+                          type: string
+                          nullable: true
+                          description: Position description (from first experience)
+                        startingDate:
+                          type: string
+                          nullable: true
+                          description: Start date of current position (YYYY-MM or
+                            YYYY-MM-DD)
+                          example: 2026-01
+                        companyId:
+                          type: string
+                          nullable: true
+                          description: LinkedIn company ID of current employer
+                          example: '10667'
+                        companyName:
+                          type: string
+                          nullable: true
+                          description: Current company name
+                          example: Meta
+                        companyLinkedinUrl:
+                          type: string
+                          nullable: true
+                          description: LinkedIn URL of the current company
+                          example: https://www.linkedin.com/company/10667/
+                        headline:
+                          type: string
+                          nullable: true
+                          description: LinkedIn headline
+                          example: CMO & VP Analytics at Meta
+                        about:
+                          type: string
+                          nullable: true
+                          description: LinkedIn about section
+                        openToWork:
+                          type: boolean
+                          nullable: true
+                          description: Whether the person is open to work
+                          example: false
+                        hiring:
+                          type: boolean
+                          nullable: true
+                          description: Whether the person is hiring
+                          example: false
+                        premium:
+                          type: boolean
+                          nullable: true
+                          description: Whether the person has LinkedIn Premium
+                          example: false
+                        connectionsCount:
+                          type: integer
+                          nullable: true
+                          description: Number of LinkedIn connections
+                          example: 5000
+                        followerCount:
+                          type: integer
+                          nullable: true
+                          description: Number of LinkedIn followers
+                          example: 12000
+                        location:
+                          type: string
+                          nullable: true
+                          description: Parsed location (city, country)
+                          example: London, United Kingdom
+              example:
+                totalResults: 3
+                totalReturned: 3
+                creditsCharged: 10
+                profiles:
+                - enriched: true
+                  linkedinUrl: https://www.linkedin.com/in/alexorig
+                  firstName: Alex
+                  lastName: Schultz
+                  position: CMO & VP Analytics
+                  description:
+                  startingDate: 2026-01
+                  companyId: '10667'
+                  companyName: Meta
+                  companyLinkedinUrl: https://www.linkedin.com/company/10667/
+                  headline: CMO & VP Analytics at Meta
+                  about:
+                  openToWork: false
+                  hiring: false
+                  premium: false
+                  connectionsCount: 5000
+                  followerCount: 12000
+                  location: London, United Kingdom
+                - enriched: false
+                  linkedinUrl:
+                  firstName:
+                  lastName:
+                  name: LinkedIn Member
+                  position: Global CMO | Marketing VP
+                  description:
+                  startingDate:
+                  companyId:
+                  companyName:
+                  companyLinkedinUrl:
+                  headline:
+                  about:
+                  openToWork:
+                  hiring:
+                  premium:
+                  connectionsCount:
+                  followerCount:
+                  location: United Kingdom
+        '202':
+          description: Accepted - Search enqueued for async processing. Results will
+            be pushed to the webhook.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Search ID for polling status
+                    example: 42
+                  status:
+                    type: string
+                    description: Current status of the search
+                    example: pending
+                  creditsReserved:
+                    type: integer
+                    description: Credits reserved for this search
+                    example: 50
+                  webhook_url:
+                    type: string
+                    description: Webhook URL where results will be delivered
+                    example: https://example.com/webhooks/find-people
+        '400':
+          description: 'Bad request: missing or invalid parameters.'
+          content:
+            application/json:
+              examples:
+                missing_companies:
+                  summary: Missing companies parameter
+                  value:
+                    error: Bad request
+                    details: companies parameter is required
+                missing_jobtitles:
+                  summary: Missing jobtitles parameter
+                  value:
+                    error: Bad request
+                    details: jobtitles parameter is required
+                invalid_company:
+                  summary: Invalid company format
+                  value:
+                    error: Bad request
+                    details: 'Invalid company value(s): example.com. Each value must
+                      be a LinkedIn company URL or a numeric LinkedIn company ID.'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          description: 'Unprocessable entity: insufficient credits.'
+          content:
+            application/json:
+              example:
+                error: Unprocessable entity
+                details: This request requires up to 50 credits (5 per profile), but
+                  you only have 25 credits available.
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+        '502':
+          description: 'Bad gateway: search service error.'
+          content:
+            application/json:
+              example:
+                error: Bad gateway
+                details: An error occurred while searching. Please try again later.
+        '500':
+          "$ref": "#/components/responses/InternalServerError"
+      callbacks:
+        onCompleted:
+          "{$request.body#/webhook_url}":
+            post:
+              summary: Notification sent when find people search completes
+              description: |
+                Sent to the per-request webhook_url or your default webhook URL.
+                Includes an `X-Vayne-Signature` header containing `sha256=<hex_digest>` for HMAC verification using your webhook signing secret.
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          example: find_people.completed
+                        find_people_search_id:
+                          type: integer
+                          example: 42
+                        status:
+                          type: string
+                          enum:
+                          - completed
+                          - failed
+                          example: completed
+                        results:
+                          type: object
+                          properties:
+                            totalResults:
+                              type: integer
+                              example: 3
+                            totalReturned:
+                              type: integer
+                              example: 3
+                            creditsCharged:
+                              type: integer
+                              example: 20
+                            profiles:
+                              type: array
+                              items:
+                                type: object
+              responses:
+                '200':
+                  description: Notification received successfully
+  "/api/find_people/{id}":
+    get:
+      summary: Get find people search result
+      description: |
+        Returns the current status and results of a find people search.
+
+        Returns HTTP 202 while processing is in progress, and HTTP 200 when completed or failed.
+      tags:
+      - Find People
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Unique identifier of the find people search
+      responses:
+        '200':
+          description: OK - Search completed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 42
+                  status:
+                    type: string
+                    enum:
+                    - pending
+                    - completed
+                    - failed
+                    example: completed
+                  creditsReserved:
+                    type: integer
+                    example: 100
+                  creditsCharged:
+                    type: integer
+                    example: 20
+                  totalResults:
+                    type: integer
+                    example: 3
+                  totalReturned:
+                    type: integer
+                    example: 3
+                  profiles:
+                    type: array
+                    items:
+                      type: object
+                  created_at:
+                    type: string
+                    format: date-time
+        '202':
+          description: Accepted - Search still processing.
+          content:
+            application/json:
+              example:
+                id: 42
+                status: pending
+                creditsReserved: 100
+                creditsCharged: 0
+                created_at: '2026-03-11T12:00:00Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '404':
+          description: 'Not found: search not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: Search not found
+  "/api/reverse_lookups":
+    get:
+      summary: List all reverse lookups
+      description: 'Returns a list of all reverse lookups for the authenticated user,
+        sorted by creation date (most recent first). Limited to 100 results.
+
+        '
+      tags:
+      - Reverse Lookups
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      responses:
+        '200':
+          description: OK - Reverse lookups retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reverse_lookups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 123
+                        name:
+                          type: string
+                          example: API Lookup 2026-03-28 10:00:00 UTC
+                        status:
+                          type: string
+                          enum:
+                          - pending
+                          - processing
+                          - refunding
+                          - generating_csv
+                          - completed
+                          - failed
+                          example: completed
+                        total_emails:
+                          type: integer
+                          example: 1000
+                        processed_emails:
+                          type: integer
+                          example: 1000
+                        matches:
+                          type: integer
+                          example: 250
+                        credits_per_match:
+                          type: integer
+                          example: 20
+                        file_url:
+                          type: string
+                          nullable: true
+                          example: https://s3.amazonaws.com/exports/reverse_lookups/lookup_123.csv
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: '2026-03-28T10:00:00Z'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+    post:
+      summary: Create a reverse lookup
+      description: |
+        Submits a batch of email addresses for reverse lookup to find their LinkedIn profile URLs.
+
+        **Cost:** 20 scraping credits per email. Credits are deducted upfront and refunded for emails that don't match a LinkedIn profile.
+
+        **Maximum:** 10,000 emails per lookup.
+
+        **Rate Limit:** 5 requests per minute per user.
+
+        **Processing:** This is an asynchronous endpoint. The request returns immediately with the lookup ID. Use `GET /api/reverse_lookups/{id}` to poll status, or provide a `webhook_url` to receive a notification when processing completes.
+      tags:
+      - Reverse Lookups
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - emails
+              properties:
+                emails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  description: Array of email addresses to look up (required, max
+                    10,000)
+                  example:
+                  - john@acme.com
+                  - jane@company.io
+                name:
+                  type: string
+                  description: Optional name for this lookup (auto-generated if blank,
+                    max 100 characters)
+                  example: My Lookup
+                webhook_url:
+                  type: string
+                  format: uri
+                  description: Optional webhook URL to receive a notification when
+                    the lookup completes. Must use HTTPS.
+                  example: https://myapp.com/webhooks/vayne
+      responses:
+        '201':
+          description: Created - Reverse lookup submitted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reverse_lookup:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 123
+                      name:
+                        type: string
+                        example: My Lookup
+                      status:
+                        type: string
+                        example: pending
+                      total_emails:
+                        type: integer
+                        example: 1000
+                      credits_per_match:
+                        type: integer
+                        example: 20
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: '2026-03-28T10:00:00Z'
+        '400':
+          description: 'Bad request: missing or invalid parameters.'
+          content:
+            application/json:
+              example:
+                error: Bad Request
+                details: 'Missing required parameter: emails (array of email addresses)'
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: 'Conflict: a reverse lookup with this name already exists.'
+          content:
+            application/json:
+              example:
+                error: Conflict
+                details: A reverse lookup with this name already exists
+        '422':
+          description: 'Unprocessable entity: invalid emails or insufficient credits.'
+          content:
+            application/json:
+              example:
+                error: Unprocessable entity
+                details: This file requires 20000 credits (1000 emails × 20 credits
+                  each), but you only have 5000 credits available.
+        '429':
+          "$ref": "#/components/responses/TooManyRequests"
+      callbacks:
+        onReverseLookupCompleted:
+          "{$request.body#/webhook_url}":
+            post:
+              summary: Notification sent when reverse lookup completes or fails
+              description: |
+                Sent to the per-request webhook_url or your default webhook URL.
+                Includes an `X-Vayne-Signature` header containing `sha256=<hex_digest>` for HMAC verification using your webhook signing secret.
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        event:
+                          type: string
+                          enum:
+                          - reverse_lookup.completed
+                          - reverse_lookup.failed
+                          example: reverse_lookup.completed
+                        reverse_lookup:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 123
+                            name:
+                              type: string
+                              example: My Lookup
+                            status:
+                              type: string
+                              example: completed
+                            total_emails:
+                              type: integer
+                              example: 1000
+                            matches:
+                              type: integer
+                              example: 250
+                            credits_per_match:
+                              type: integer
+                              example: 20
+                            export_url:
+                              type: string
+                              example: https://s3.amazonaws.com/exports/reverse_lookups/lookup_123.csv
+                            created_at:
+                              type: string
+                              format: date-time
+                              example: '2026-03-28T10:00:00Z'
+              responses:
+                '200':
+                  description: Notification received successfully
+  "/api/reverse_lookups/{id}":
+    get:
+      summary: Get reverse lookup details and results
+      description: |
+        Returns the current status and results of a reverse lookup.
+
+        Results are paginated (default 100, max 500 per page).
+      tags:
+      - Reverse Lookups
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Unique identifier of the reverse lookup
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+        description: 'Page number for results pagination (default: 1)'
+      - name: per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+          maximum: 500
+        description: 'Results per page (default: 100, max: 500)'
+      responses:
+        '200':
+          description: OK - Reverse lookup details retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reverse_lookup:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 123
+                      name:
+                        type: string
+                        example: My Lookup
+                      status:
+                        type: string
+                        enum:
+                        - pending
+                        - processing
+                        - refunding
+                        - generating_csv
+                        - completed
+                        - failed
+                        example: completed
+                      total_emails:
+                        type: integer
+                        example: 1000
+                      processed_emails:
+                        type: integer
+                        example: 1000
+                      matches:
+                        type: integer
+                        example: 250
+                      credits_per_match:
+                        type: integer
+                        example: 20
+                      file_url:
+                        type: string
+                        nullable: true
+                        example: https://s3.amazonaws.com/exports/reverse_lookups/lookup_123.csv
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: '2026-03-28T10:00:00Z'
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        email:
+                          type: string
+                          example: john@acme.com
+                        linkedin_url:
+                          type: string
+                          example: https://www.linkedin.com/in/johndoe
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      per_page:
+                        type: integer
+                        example: 100
+                      total_results:
+                        type: integer
+                        example: 1000
+                      total_pages:
+                        type: integer
+                        example: 10
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: reverse lookup not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: Reverse lookup not found
+  "/api/reverse_lookups/{id}/export":
+    get:
+      summary: Get CSV export URL
+      description: |
+        Returns the download URL for the CSV export of a completed reverse lookup.
+
+        Returns HTTP 202 if the export file is still being generated.
+      tags:
+      - Reverse Lookups
+      parameters:
+      - "$ref": "#/components/parameters/AuthorizationHeader"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Unique identifier of the reverse lookup
+      responses:
+        '200':
+          description: OK - Export URL retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export_url:
+                    type: string
+                    example: https://s3.amazonaws.com/exports/reverse_lookups/lookup_123.csv
+        '202':
+          description: Accepted - Export file is being generated.
+          content:
+            application/json:
+              example:
+                error: Not ready
+                details: Export file is being generated
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          description: 'Not found: reverse lookup not found.'
+          content:
+            application/json:
+              example:
+                error: Not Found
+                details: Reverse lookup not found
+        '422':
+          description: Lookup not yet completed.
+          content:
+            application/json:
+              example:
+                error: Not ready
+                details: Lookup not yet completed
